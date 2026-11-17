@@ -4,35 +4,45 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#0B1B3F">
   <title>Payment links</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap">
   <link rel="stylesheet" href="/style.css">
   <script src="/admin.js" defer></script>
 </head>
-<body>
-  <main class="shell wide">
-    <header class="brand">
-      <span class="brand-mark" aria-hidden="true"></span>
+<body class="admin">
+  <header class="topbar">
+    <div class="topbar-inner">
+      <img class="brand-logo" src="/logo.svg" alt="" width="34" height="34">
       <span class="brand-name" id="brandName">&nbsp;</span>
-      <span class="secure" id="who">Payment links</span>
+      <span class="tag">Payment links</span>
+      <span class="grow"></span>
       <button class="copy" type="button" id="logoutBtn" hidden>Sign out</button>
-    </header>
+    </div>
+  </header>
 
-    <div class="banner" id="mockBanner" hidden>Test mode — no real payment will be made.</div>
+  <div class="admin-wrap">
+    <div class="banner" id="mockBanner" hidden><span class="dot" aria-hidden="true"></span>Test mode — no real payment will be made.</div>
 
-    <section class="card" id="loginView" hidden>
-      <h1>Sign in</h1>
-      <form id="loginForm">
-        <label class="field">
-          <span>Admin password</span>
-          <input id="password" type="password" autocomplete="current-password" required>
-        </label>
-        <p class="error" id="loginError" role="alert" hidden></p>
-        <button class="btn primary" type="submit">Sign in</button>
-      </form>
-    </section>
+    <div class="login-wrap" id="loginView" hidden>
+      <section class="card">
+        <h1>Welcome back</h1>
+        <p class="muted">Sign in to create and track payment links.</p>
+        <form id="loginForm">
+          <label class="field">
+            <span>Admin password</span>
+            <input id="password" type="password" autocomplete="current-password" required>
+          </label>
+          <p class="error" id="loginError" role="alert" hidden></p>
+          <button class="btn primary" type="submit">Sign in</button>
+        </form>
+      </section>
+    </div>
 
-    <div id="appView" hidden>
+    <div class="admin-grid" id="appView" hidden>
       <section class="card">
         <h1>New payment link</h1>
         <form id="linkForm" novalidate>
@@ -61,11 +71,16 @@
             <code id="createdUrl"></code>
             <button class="copy" type="button" id="copyCreated">Copy</button>
           </div>
-          <p class="muted small">The address and QR are made only when the customer opens it, so the link doesn't expire.</p>
+          <p class="muted small" id="createdNote"></p>
         </div>
       </section>
 
-      <section class="card list-card">
+      <section class="card">
+        <div class="stats">
+          <div class="stat wait"><b id="statOpen">0</b><span>Awaiting payment</span></div>
+          <div class="stat good"><b id="statPaid">0</b><span>Paid</span></div>
+          <div class="stat"><b id="statTotal">0</b><span>Total links</span></div>
+        </div>
         <div class="list-head">
           <h2>Links</h2>
           <button class="copy" type="button" id="refreshBtn">Refresh</button>
@@ -73,6 +88,6 @@
         <div id="links"></div>
       </section>
     </div>
-  </main>
+  </div>
 </body>
 </html>

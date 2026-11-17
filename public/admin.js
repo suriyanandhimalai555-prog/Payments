@@ -1,6 +1,7 @@
 'use strict';
 
 const $ = (id) => document.getElementById(id);
+let lifetime = 30;
 
 const LABEL = {
   open: { text: 'Not paid', tone: 'wait' },
@@ -69,8 +70,11 @@ function signedIn(yes) {
 function renderLinks(list) {
   const box = $('links');
   box.innerHTML = '';
+  $('statOpen').textContent = list.filter((l) => l.status === 'open').length;
+  $('statPaid').textContent = list.filter((l) => l.status === 'paid').length;
+  $('statTotal').textContent = list.length;
   if (!list.length) {
-    box.innerHTML = '<p class="muted small">No links yet.</p>';
+    box.innerHTML = '<p class="empty">No links yet. Create your first one on the left.</p>';
     return;
   }
   for (const l of list) {
@@ -181,6 +185,7 @@ $('linkForm').addEventListener('submit', async (e) => {
       }),
     });
     $('createdUrl').textContent = link.url;
+    $('createdNote').textContent = `This link doesn't expire. When the customer taps Pay, they get a deposit address valid for ${lifetime} minutes. If it runs out, they can start again on the same link.`;
     $('created').hidden = false;
     $('amount').value = '';
     $('order_id').value = '';
@@ -203,6 +208,7 @@ $('refreshBtn').addEventListener('click', load);
     $('brandName').textContent = config.brandName;
     document.documentElement.style.setProperty('--brand', config.brandColor);
     $('mockBanner').hidden = !config.mock;
+    lifetime = config.lifetimeMinutes;
     for (const c of config.fiats) $('currency').append(new Option(c, c));
   } catch { /* page still works */ }
   load();

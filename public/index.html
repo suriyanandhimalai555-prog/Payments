@@ -4,129 +4,187 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#0B1B3F">
   <title>Checkout</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap">
   <link rel="stylesheet" href="/style.css">
   <script src="/app.js" defer></script>
 </head>
-<body>
-  <main class="shell">
-    <header class="brand">
-      <span class="brand-mark" aria-hidden="true"></span>
-      <span class="brand-name" id="brandName">&nbsp;</span>
-      <span class="secure">
-        <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1V7a5 5 0 0 0-5-5Zm-3 8V7a3 3 0 1 1 6 0v3H9Z"/></svg>
-        Secure payment
-      </span>
-    </header>
+<body class="checkout">
+  <div class="layout">
+    <aside class="side">
+      <div class="side-inner">
+        <a class="brand" href="/" aria-label="Home">
+          <img class="brand-logo" src="/logo.svg" alt="" width="40" height="40">
+          <span class="brand-name" id="brandName">&nbsp;</span>
+        </a>
 
-    <div class="banner" id="mockBanner" hidden>Test mode — no real payment will be made.</div>
-
-    <!-- Step 1: amount + coin -->
-    <section class="card" id="formView" hidden>
-      <h1 id="formTitle">Make a payment</h1>
-      <div id="fixedBlock" hidden>
-        <div class="fixed-amount" id="fixedAmount"></div>
-        <p class="muted fixed-for" id="fixedFor"></p>
-      </div>
-      <form id="payForm" novalidate>
-        <label class="field" id="amountField">
-          <span>Amount</span>
-          <div class="amount-row">
-            <input id="amount" name="amount" type="text" inputmode="decimal" autocomplete="off" placeholder="0.00" required>
-            <select id="currency" name="currency" aria-label="Currency"></select>
-          </div>
-        </label>
-
-        <fieldset class="field">
-          <legend>Pay with</legend>
-          <div class="options" id="options" role="radiogroup"></div>
-        </fieldset>
-
-        <label class="field" id="emailField">
-          <span>Email <em>(optional, for your receipt)</em></span>
-          <input id="email" name="email" type="email" autocomplete="email" placeholder="you@example.com">
-        </label>
-
-        <label class="field" id="refField">
-          <span>Reference <em>(optional)</em></span>
-          <input id="order_id" name="order_id" type="text" autocomplete="off" maxlength="64" placeholder="Invoice or order number">
-        </label>
-
-        <input id="description" name="description" type="hidden">
-
-        <p class="error" id="formError" role="alert" hidden></p>
-        <button class="btn primary" type="submit" id="submitBtn">Continue</button>
-      </form>
-    </section>
-
-    <!-- Step 2: send funds -->
-    <section class="card" id="payView" hidden>
-      <div class="pay-head">
-        <div>
-          <div class="muted small" id="payRef"></div>
-          <div class="fiat" id="payFiat"></div>
-        </div>
-        <span class="pill" id="statusPill"></span>
-      </div>
-
-      <div id="payBlock">
-        <div class="send-box">
-          <div class="muted small">Send exactly</div>
-          <div class="crypto-amount">
-            <span id="payAmount"></span>
-            <button class="copy" type="button" data-copy="payAmountRaw" aria-label="Copy amount">Copy</button>
-          </div>
-          <div class="muted small" id="payNetwork"></div>
+        <div class="side-copy">
+          <h2 class="side-title">Pay securely<br>with crypto</h2>
+          <p class="side-sub">Send USDT from any wallet or exchange. Your payment is confirmed automatically on the blockchain.</p>
         </div>
 
-        <div class="qr-wrap"><img id="qr" alt="QR code of the deposit address" width="200" height="200"></div>
-
-        <div class="field">
-          <span class="label">Deposit address</span>
-          <div class="mono-row">
-            <code id="address"></code>
-            <button class="copy" type="button" data-copy="address" aria-label="Copy address">Copy</button>
-          </div>
-        </div>
-
-        <div class="field memo" id="memoField" hidden>
-          <span class="label">Memo / tag — required</span>
-          <div class="mono-row">
-            <code id="memo"></code>
-            <button class="copy" type="button" data-copy="memo" aria-label="Copy memo">Copy</button>
-          </div>
-          <p class="small">Include this memo, or the payment cannot be credited.</p>
-        </div>
-
-        <div class="progress" id="receivedRow" hidden></div>
-
-        <div class="timer">
-          <span>Pay within</span>
-          <strong id="countdown">--:--</strong>
-        </div>
-        <div class="bar"><div class="bar-fill" id="timerBar"></div></div>
-
-        <ul class="warn">
-          <li id="warnNetwork"></li>
-          <li>If your wallet or exchange takes a fee, add it so we receive the full amount.</li>
-          <li>Do not send after the timer ends. Funds sent to an expired address are lost.</li>
+        <ul class="trust">
+          <li>
+            <span class="trust-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2 4 5v6c0 5 3.4 9.5 8 11 4.6-1.5 8-6 8-11V5l-8-3Zm-1.2 13.6-3.5-3.5 1.4-1.4 2.1 2.1 4.6-4.6 1.4 1.4-6 6Z"/></svg></span>
+            <span><strong>Encrypted &amp; private</strong><small>No account or card details needed</small></span>
+          </li>
+          <li>
+            <span class="trust-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z"/></svg></span>
+            <span><strong>Confirmed in minutes</strong><small>This page updates by itself</small></span>
+          </li>
+          <li>
+            <span class="trust-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm1 5v4.6l3.7 2.2-1 1.7L11 12.7V7h2Z"/></svg></span>
+            <span><strong>Locked rate</strong><small>The amount is fixed while you pay</small></span>
+          </li>
         </ul>
+
+        <div class="side-foot">
+          <span class="side-badge">
+            <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1V7a5 5 0 0 0-5-5Zm-3 8V7a3 3 0 1 1 6 0v3H9Z"/></svg>
+            Secure checkout
+          </span>
+          <span class="side-nets">TRC20 · BEP20</span>
+        </div>
       </div>
+      <div class="side-glow" aria-hidden="true"></div>
+    </aside>
 
-      <div class="result" id="resultBlock" hidden>
-        <div class="result-icon" id="resultIcon" aria-hidden="true"></div>
-        <h2 id="resultTitle"></h2>
-        <p class="muted" id="resultText"></p>
-        <button class="btn" type="button" id="newPaymentBtn">Start a new payment</button>
+    <main class="main">
+      <div class="main-inner">
+        <div class="banner" id="mockBanner" hidden>
+          <span class="dot" aria-hidden="true"></span>Test mode — no real payment will be made.
+        </div>
+
+        <section class="card" id="formView" hidden>
+          <ol class="steps" aria-label="Progress">
+            <li class="on"><span>1</span>Details</li>
+            <li><span>2</span>Pay</li>
+            <li><span>3</span>Done</li>
+          </ol>
+
+          <h1 id="formTitle">Make a payment</h1>
+          <div id="fixedBlock" class="due" hidden>
+            <div class="due-label">Amount due</div>
+            <div class="fixed-amount" id="fixedAmount"></div>
+            <p class="fixed-for" id="fixedFor"></p>
+          </div>
+          <div class="notice" id="timeNotice" hidden></div>
+
+          <form id="payForm" novalidate>
+            <label class="field" id="amountField">
+              <span>Amount</span>
+              <div class="amount-row">
+                <input id="amount" name="amount" type="text" inputmode="decimal" autocomplete="off" placeholder="0.00" required>
+                <select id="currency" name="currency" aria-label="Currency"></select>
+              </div>
+            </label>
+
+            <fieldset class="field">
+              <legend>Pay with</legend>
+              <div class="options" id="options" role="radiogroup"></div>
+            </fieldset>
+
+            <label class="field" id="emailField">
+              <span>Email <em>(optional, for your receipt)</em></span>
+              <input id="email" name="email" type="email" autocomplete="email" placeholder="you@example.com">
+            </label>
+
+            <label class="field" id="refField">
+              <span>Reference <em>(optional)</em></span>
+              <input id="order_id" name="order_id" type="text" autocomplete="off" maxlength="64" placeholder="Invoice or order number">
+            </label>
+
+            <input id="description" name="description" type="hidden">
+
+            <p class="error" id="formError" role="alert" hidden></p>
+            <button class="btn primary" type="submit" id="submitBtn">Continue</button>
+          </form>
+        </section>
+
+        <section class="card" id="payView" hidden>
+          <ol class="steps" id="paySteps" aria-label="Progress">
+            <li class="done"><span>1</span>Details</li>
+            <li class="on"><span>2</span>Pay</li>
+            <li><span>3</span>Done</li>
+          </ol>
+
+          <div class="pay-head">
+            <div>
+              <div class="pay-ref" id="payRef"></div>
+              <div class="fiat" id="payFiat"></div>
+            </div>
+            <span class="pill" id="statusPill"></span>
+          </div>
+
+          <div id="payBlock">
+            <div class="send-box">
+              <div class="send-label">Send exactly</div>
+              <div class="crypto-amount">
+                <span id="payAmount"></span>
+                <button class="copy" type="button" data-copy="payAmountRaw" aria-label="Copy amount">Copy</button>
+              </div>
+              <div class="send-net" id="payNetwork"></div>
+            </div>
+
+            <div class="qr-wrap">
+              <div class="qr-frame">
+                <img id="qr" alt="QR code of the deposit address" width="220" height="220">
+                <img class="qr-logo" src="/logo.svg" alt="" width="40" height="40">
+              </div>
+              <p class="qr-hint">Scan with your wallet app</p>
+            </div>
+
+            <div class="field">
+              <span class="label">Deposit address</span>
+              <div class="mono-row">
+                <code id="address"></code>
+                <button class="copy" type="button" data-copy="address" aria-label="Copy address">Copy</button>
+              </div>
+            </div>
+
+            <div class="field memo" id="memoField" hidden>
+              <span class="label">Memo / tag — required</span>
+              <div class="mono-row">
+                <code id="memo"></code>
+                <button class="copy" type="button" data-copy="memo" aria-label="Copy memo">Copy</button>
+              </div>
+              <p class="small">Include this memo, or the payment cannot be credited.</p>
+            </div>
+
+            <div class="progress" id="receivedRow" hidden></div>
+
+            <div class="timer">
+              <span>Address valid for</span>
+              <strong id="countdown">--:--</strong>
+            </div>
+            <div class="bar"><div class="bar-fill" id="timerBar"></div></div>
+
+            <ul class="warn">
+              <li id="warnNetwork"></li>
+              <li>If your wallet or exchange takes a fee, add it so we receive the full amount.</li>
+              <li>Do not send after the timer ends, and don't save this address for later. Funds sent to an expired address are lost.</li>
+            </ul>
+          </div>
+
+          <div class="result" id="resultBlock" hidden>
+            <div class="result-icon" id="resultIcon" aria-hidden="true"></div>
+            <h2 id="resultTitle"></h2>
+            <p class="muted" id="resultText"></p>
+            <button class="btn" type="button" id="newPaymentBtn">Start a new payment</button>
+          </div>
+        </section>
+
+        <section class="card loading" id="loadingView">
+          <div class="spinner" aria-label="Loading"></div>
+        </section>
+
+        <footer class="foot" id="support"></footer>
       </div>
-    </section>
-
-    <section class="card" id="loadingView">
-      <div class="spinner" aria-label="Loading"></div>
-    </section>
-
-    <footer class="foot muted small" id="support"></footer>
-  </main>
+    </main>
+  </div>
 </body>
 </html>

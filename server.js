@@ -482,12 +482,13 @@ const STATIC = {
   '/app.js': ['app.js', 'text/javascript; charset=utf-8'],
   '/style.css': ['style.css', 'text/css; charset=utf-8'],
   '/favicon.svg': ['favicon.svg', 'image/svg+xml'],
+  '/logo.svg': ['logo.svg', 'image/svg+xml'],
   '/admin': ['admin.html', 'text/html; charset=utf-8'],
   '/admin.js': ['admin.js', 'text/javascript; charset=utf-8'],
 };
 
 const SECURITY_HEADERS = {
-  'Content-Security-Policy': "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+  'Content-Security-Policy': "default-src 'self'; img-src 'self' data:; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
   'Referrer-Policy': 'no-referrer',
   'X-Content-Type-Options': 'nosniff',
 };
@@ -533,7 +534,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && STATIC[url.pathname]) {
       const [file, type] = STATIC[url.pathname];
       return send(res, 200, fs.readFileSync(path.join(ROOT, 'public', file)), type,
-        file.endsWith('.html') ? {} : { 'Cache-Control': 'public, max-age=300' });
+        file.endsWith('.svg') ? { 'Cache-Control': 'public, max-age=300' } : {});
     }
 
     // Customer-facing fixed-amount link: same checkout page, locked amount.
@@ -630,7 +631,7 @@ const server = http.createServer(async (req, res) => {
       if (m[2]) {
         const view = publicView(p);
         if (!view.address) return fail(res, 410, 'This payment can no longer be paid.');
-        const svg = await QRCode.toString(view.address, { type: 'svg', margin: 1, errorCorrectionLevel: 'M' });
+        const svg = await QRCode.toString(view.address, { type: 'svg', margin: 1, errorCorrectionLevel: 'H' });
         return send(res, 200, svg, 'image/svg+xml');
       }
       await refreshStatus(p);

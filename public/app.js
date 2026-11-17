@@ -88,14 +88,23 @@ function renderForm(options) {
     input.checked = i === 0;
     const coin = document.createElement('span');
     coin.className = 'coin';
-    coin.textContent = o.coin.slice(0, 4);
+    coin.dataset.coin = o.coin;
+    coin.textContent = { USDT: '₮', USDC: '$', BTC: '₿', ETH: 'Ξ', TRX: 'T', BNB: 'B' }[o.coin] || o.coin.slice(0, 1);
     const text = document.createElement('span');
     text.className = 'option-text';
     const [, net] = o.label.split(' · ');
+    const std = (net || '').match(/\(([^)]+)\)/)?.[1];
     text.innerHTML = '<strong></strong><small></small>';
-    text.querySelector('strong').textContent = o.coinName || o.coin;
-    text.querySelector('small').textContent = net || o.network;
-    label.append(input, coin, text);
+    text.querySelector('strong').textContent = `${o.coin} · ${o.coinName || ''}`.replace(/ · $/, '');
+    text.querySelector('small').textContent = (net || o.network).replace(/\s*\([^)]*\)/, '');
+    const tag = document.createElement('span');
+    tag.className = 'net-tag';
+    tag.dataset.net = o.network.toLowerCase();
+    tag.textContent = std || o.network;
+    const tick = document.createElement('span');
+    tick.className = 'tick';
+    tick.setAttribute('aria-hidden', 'true');
+    label.append(input, coin, text, tag, tick);
     box.append(label);
   });
 
@@ -115,6 +124,11 @@ function renderForm(options) {
     $('emailField').hidden = true;
     $('submitBtn').textContent = 'Pay';
   }
+  const mins = config.lifetimeMinutes;
+  $('timeNotice').textContent = link
+    ? `This link doesn't expire. Once you tap Pay, you'll have ${mins} minutes to send the payment — only tap it when you're ready to pay.`
+    : `After you continue, you'll have ${mins} minutes to send the payment.`;
+  $('timeNotice').hidden = false;
 
   show('formView');
   if (!link && !$('amount').value) $('amount').focus();
@@ -182,6 +196,10 @@ function renderPayment() {
   $('payFiat').textContent = fiat(p.amount, p.currency);
   $('statusPill').textContent = s.pill;
   $('statusPill').dataset.tone = s.tone;
+  const done = ['paid', 'manual_accept'].includes(p.status);
+  const stepEls = $('paySteps').children;
+  stepEls[1].className = done ? 'done' : 'on';
+  stepEls[2].className = done ? 'done on' : '';
 
   const payable = Boolean(p.address) && !FINAL.has(p.status);
   $('payBlock').hidden = !payable;
@@ -337,6 +355,8 @@ function showLinkClosed(l) {
   $('resultBlock').hidden = false;
   $('newPaymentBtn').hidden = true;
   const paid = l.status === 'paid';
+  $('paySteps').children[1].className = paid ? 'done' : 'on';
+  $('paySteps').children[2].className = paid ? 'done on' : '';
   $('statusPill').textContent = paid ? 'Paid' : 'Closed';
   $('statusPill').dataset.tone = paid ? 'good' : 'bad';
   $('resultIcon').dataset.tone = paid ? 'good' : 'bad';
