@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Checkout</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <main class="shell">
+    <header class="brand">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span class="brand-name" id="brandName">&nbsp;</span>
+      <span class="secure">
+        <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1V7a5 5 0 0 0-5-5Zm-3 8V7a3 3 0 1 1 6 0v3H9Z"/></svg>
+        Secure payment
+      </span>
+    </header>
+
+    <div class="banner" id="mockBanner" hidden>Test mode — no real payment will be made.</div>
+
+    <!-- Step 1: amount + coin -->
+    <section class="card" id="formView" hidden>
+      <h1>Make a payment</h1>
+      <form id="payForm" novalidate>
+        <label class="field">
+          <span>Amount</span>
+          <div class="amount-row">
+            <input id="amount" name="amount" type="text" inputmode="decimal" autocomplete="off" placeholder="0.00" required>
+            <select id="currency" name="currency" aria-label="Currency"></select>
+          </div>
+        </label>
+
+        <fieldset class="field">
+          <legend>Pay with</legend>
+          <div class="options" id="options" role="radiogroup"></div>
+        </fieldset>
+
+        <label class="field">
+          <span>Email <em>(optional, for your receipt)</em></span>
+          <input id="email" name="email" type="email" autocomplete="email" placeholder="you@example.com">
+        </label>
+
+        <label class="field" id="refField">
+          <span>Reference <em>(optional)</em></span>
+          <input id="order_id" name="order_id" type="text" autocomplete="off" maxlength="64" placeholder="Invoice or order number">
+        </label>
+
+        <input id="description" name="description" type="hidden">
+
+        <p class="error" id="formError" role="alert" hidden></p>
+        <button class="btn primary" type="submit" id="submitBtn">Continue</button>
+      </form>
+    </section>
+
+    <!-- Step 2: send funds -->
+    <section class="card" id="payView" hidden>
+      <div class="pay-head">
+        <div>
+          <div class="muted small" id="payRef"></div>
+          <div class="fiat" id="payFiat"></div>
+        </div>
+        <span class="pill" id="statusPill"></span>
+      </div>
+
+      <div id="payBlock">
+        <div class="send-box">
+          <div class="muted small">Send exactly</div>
+          <div class="crypto-amount">
+            <span id="payAmount"></span>
+            <button class="copy" type="button" data-copy="payAmountRaw" aria-label="Copy amount">Copy</button>
+          </div>
+          <div class="muted small" id="payNetwork"></div>
+        </div>
+
+        <div class="qr-wrap"><img id="qr" alt="QR code of the deposit address" width="200" height="200"></div>
+
+        <div class="field">
+          <span class="label">Deposit address</span>
+          <div class="mono-row">
+            <code id="address"></code>
+            <button class="copy" type="button" data-copy="address" aria-label="Copy address">Copy</button>
+          </div>
+        </div>
+
+        <div class="field memo" id="memoField" hidden>
+          <span class="label">Memo / tag — required</span>
+          <div class="mono-row">
+            <code id="memo"></code>
+            <button class="copy" type="button" data-copy="memo" aria-label="Copy memo">Copy</button>
+          </div>
+          <p class="small">Include this memo, or the payment cannot be credited.</p>
+        </div>
+
+        <div class="progress" id="receivedRow" hidden></div>
+
+        <div class="timer">
+          <span>Pay within</span>
+          <strong id="countdown">--:--</strong>
+        </div>
+        <div class="bar"><div class="bar-fill" id="timerBar"></div></div>
+
+        <ul class="warn">
+          <li id="warnNetwork"></li>
+          <li>If your wallet or exchange takes a fee, add it so we receive the full amount.</li>
+          <li>Do not send after the timer ends. Funds sent to an expired address are lost.</li>
+        </ul>
+      </div>
+
+      <div class="result" id="resultBlock" hidden>
+        <div class="result-icon" id="resultIcon" aria-hidden="true"></div>
+        <h2 id="resultTitle"></h2>
+        <p class="muted" id="resultText"></p>
+        <button class="btn" type="button" id="newPaymentBtn">Start a new payment</button>
+      </div>
+    </section>
+
+    <section class="card" id="loadingView">
+      <div class="spinner" aria-label="Loading"></div>
+    </section>
+
+    <footer class="foot muted small" id="support"></footer>
+  </main>
+</body>
+</html>

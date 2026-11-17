@@ -1,0 +1,20 @@
+{
+  "name": "crypto-checkout",
+  "version": "1.0.0",
+  "private": true,
+  "description": "White-label crypto checkout: your own branded pay page backed by a payment gateway's white-label API.",
+  "type": "module",
+  "main": "server.js",
+  "engines": {
+    "node": ">=20.12"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "mock": "MOCK=1 node --watch server.js",
+    "test:webhook": "node scripts/test-webhook.js"
+  },
+  "dependencies": {
+    "qrcode": "1.5.4"
+  }
+}
