@@ -5,6 +5,7 @@ A branded crypto payment page. It runs on OxaPay's **white-label** API, but noth
 - The payer only ever talks to this server. The API key, the gateway hostnames and the gateway's error text stay server-side.
 - The QR code is drawn locally as SVG. The gateway's hosted `qr_code` image is never used.
 - The deposit address is hidden once the payment window expires, because funds sent after expiry are lost.
+- The payer's email stays on this server; it is not sent to the gateway.
 - Status updates arrive two ways: by polling the gateway (always on), and by HMAC-SHA512-signed webhooks when `PUBLIC_URL` is set.
 
 ## Run
@@ -23,15 +24,20 @@ MOCK=1 npm start
 
 In mock mode, `POST /api/mock/<id>/<status>` moves a payment along: `paying`, `paid`, `underpaid`, `expire`.
 
-## Payment links
+## Fixed-amount payment links
 
-Open the page with the form already filled in:
+1. Set `ADMIN_PASSWORD` in `.env` and open `/admin`.
+2. Enter the amount, reference and what it's for, then click **Create link**.
+3. Send the link (`/p/<code>`) whenever you like. It doesn't expire.
+4. The customer sees the amount locked and picks a coin. Only then is the address and QR made, at the current rate, with a fresh timer.
+5. Each link can be paid once. Reopening it resumes the same attempt. If that attempt expires, the customer can start a new one on the same link.
+6. `/admin` lists every link: not paid, confirming, paid (with the coin and amount received), or cancelled. Open links can be cancelled.
 
-```
-https://pay.yourdomain.com/?amount=1500&currency=INR&ref=INV-22&desc=Gold%20scheme&email=a@b.com
-```
+Links are saved in `data/links.json`.
 
-The payer can still edit these values. If a link has to fix the amount, the amount must be set on the server (for example a signed link or a token-protected create endpoint). That is not built yet.
+## Pre-filled open-amount links
+
+`/?amount=1500&currency=INR&ref=INV-22&desc=...` only fills in the form, so the payer can change it. Use the admin links above when the amount must be fixed.
 
 ## Webhooks
 

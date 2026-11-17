@@ -24,9 +24,13 @@
 
     <!-- Step 1: amount + coin -->
     <section class="card" id="formView" hidden>
-      <h1>Make a payment</h1>
+      <h1 id="formTitle">Make a payment</h1>
+      <div id="fixedBlock" hidden>
+        <div class="fixed-amount" id="fixedAmount"></div>
+        <p class="muted fixed-for" id="fixedFor"></p>
+      </div>
       <form id="payForm" novalidate>
-        <label class="field">
+        <label class="field" id="amountField">
           <span>Amount</span>
           <div class="amount-row">
             <input id="amount" name="amount" type="text" inputmode="decimal" autocomplete="off" placeholder="0.00" required>
@@ -39,7 +43,7 @@
           <div class="options" id="options" role="radiogroup"></div>
         </fieldset>
 
-        <label class="field">
+        <label class="field" id="emailField">
           <span>Email <em>(optional, for your receipt)</em></span>
           <input id="email" name="email" type="email" autocomplete="email" placeholder="you@example.com">
         </label>

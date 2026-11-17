@@ -2,6 +2,9 @@
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
+// /p/<code> = fixed-amount link created on the admin page.
+const linkCode = (location.pathname.match(/^\/p\/([A-Za-z0-9_-]{6,32})$/) || [])[1] || null;
+let link = null;
 
 const STATUS = {
   new:           { pill: 'Awaiting payment', tone: 'wait' },
@@ -102,8 +105,19 @@ function renderForm(options) {
   if (params.get('email')) $('email').value = params.get('email');
   if (params.get('desc')) $('description').value = params.get('desc');
 
+  if (link) {
+    $('formTitle').textContent = 'Payment due';
+    $('fixedBlock').hidden = false;
+    $('fixedAmount').textContent = fiat(link.amount, link.currency);
+    $('fixedFor').textContent = link.description ? `${link.description} · Ref ${link.order_id}` : `Ref ${link.order_id}`;
+    $('amountField').hidden = true;
+    $('refField').hidden = true;
+    $('emailField').hidden = true;
+    $('submitBtn').textContent = 'Pay';
+  }
+
   show('formView');
-  if (!$('amount').value) $('amount').focus();
+  if (!link && !$('amount').value) $('amount').focus();
 }
 
 function formError(msg) {
@@ -115,7 +129,7 @@ $('payForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   formError('');
   const amount = $('amount').value.replace(/,/g, '').trim();
-  if (!amount || !(Number(amount) > 0)) return formError('Enter the amount you want to pay.');
+  if (!link && (!amount || !(Number(amount) > 0))) return formError('Enter the amount you want to pay.');
   const option = document.querySelector('input[name="option"]:checked')?.value;
   if (!option) return formError('Choose how you want to pay.');
 
@@ -123,7 +137,9 @@ $('payForm').addEventListener('submit', async (e) => {
   btn.disabled = true;
   btn.textContent = 'Preparing…';
   try {
-    const payment = await api('/api/payments', {
+    const payment = link
+      ? await api(`/api/links/${encodeURIComponent(link.code)}/pay`, { method: 'POST', body: JSON.stringify({ option }) })
+      : await api('/api/payments', {
       method: 'POST',
       body: JSON.stringify({
         amount: Number(amount),
@@ -134,13 +150,13 @@ $('payForm').addEventListener('submit', async (e) => {
         description: $('description').value.trim(),
       }),
     });
-    history.replaceState(null, '', `?id=${encodeURIComponent(payment.id)}`);
+    if (!link) history.replaceState(null, '', `?id=${encodeURIComponent(payment.id)}`);
     openPayment(payment);
   } catch (err) {
     formError(err.message);
   } finally {
     btn.disabled = false;
-    btn.textContent = 'Continue';
+    btn.textContent = link ? 'Pay' : 'Continue';
   }
 });
 
@@ -302,12 +318,34 @@ $('newPaymentBtn').addEventListener('click', () => {
   clearTimeout(pollTimer);
   clearInterval(tickTimer);
   current = null;
-  history.replaceState(null, '', location.pathname);
-  params.delete('id');
+  if (!link) {
+    history.replaceState(null, '', location.pathname);
+    params.delete('id');
+  }
+  link = null;
   start();
 });
 
 // ─── Boot ────────────────────────────────────────────────────────────────────
+
+function showLinkClosed(l) {
+  current = null;
+  show('payView');
+  $('payRef').textContent = l.description ? `${l.description} · Ref ${l.order_id}` : `Ref ${l.order_id}`;
+  $('payFiat').textContent = fiat(l.amount, l.currency);
+  $('payBlock').hidden = true;
+  $('resultBlock').hidden = false;
+  $('newPaymentBtn').hidden = true;
+  const paid = l.status === 'paid';
+  $('statusPill').textContent = paid ? 'Paid' : 'Closed';
+  $('statusPill').dataset.tone = paid ? 'good' : 'bad';
+  $('resultIcon').dataset.tone = paid ? 'good' : 'bad';
+  $('resultIcon').textContent = paid ? '✓' : '!';
+  $('resultTitle').textContent = paid ? 'Already paid' : 'Link no longer active';
+  $('resultText').textContent = paid
+    ? `This payment (reference ${l.order_id}) has been received. Thank you.`
+    : 'This payment link has been cancelled. Please contact us for a new one.';
+}
 
 async function start() {
   show('loadingView');
@@ -318,6 +356,13 @@ async function start() {
     document.documentElement.style.setProperty('--brand', config.brandColor);
     $('mockBanner').hidden = !config.mock;
     $('support').textContent = config.supportText || '';
+
+    if (linkCode) {
+      link = await api(`/api/links/${encodeURIComponent(linkCode)}`);
+      if (link.payment) return openPayment(link.payment);
+      if (link.status !== 'open') return showLinkClosed(link);
+      return renderForm(await api('/api/options'));
+    }
 
     const id = params.get('id');
     if (id) {

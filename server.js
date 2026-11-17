@@ -48,10 +48,17 @@ const cfg = {
   minAmount: num(process.env.MIN_AMOUNT) ?? 1,
   maxAmount: num(process.env.MAX_AMOUNT),
   trustProxy: process.env.TRUST_PROXY === '1',
+  adminPassword: process.env.ADMIN_PASSWORD || (MOCK ? 'admin' : ''),
 };
 
 if (!cfg.apiKey) {
   console.error('OXAPAY_MERCHANT_API_KEY is not set. Copy .env.example to .env and fill it in (or run with MOCK=1).');
+  process.exit(1);
+}
+if (!cfg.adminPassword) {
+  console.warn('ADMIN_PASSWORD is not set — the /admin page (fixed-amount links) is disabled.');
+} else if (cfg.adminPassword.length < 10 && !MOCK) {
+  console.error('ADMIN_PASSWORD must be at least 10 characters.');
   process.exit(1);
 }
 if (!cfg.publicUrl) {
@@ -163,6 +170,118 @@ function save() {
   }, 200);
 }
 
+// ─── Fixed-amount links (data/links.json) ────────────────────────────────────
+
+const LINKS_FILE = path.join(DATA_DIR, MOCK ? 'links.mock.json' : 'links.json');
+const links = new Map();
+try {
+  for (const l of JSON.parse(fs.readFileSync(LINKS_FILE, 'utf8'))) links.set(l.code, l);
+} catch { /* first run */ }
+
+let linksTimer = null;
+function saveLinks() {
+  clearTimeout(linksTimer);
+  linksTimer = setTimeout(() => {
+    const tmp = `${LINKS_FILE}.tmp`;
+    fs.writeFileSync(tmp, JSON.stringify([...links.values()], null, 2));
+    fs.renameSync(tmp, LINKS_FILE);
+  }, 200);
+}
+
+function createLink(body) {
+  const v = validateCreate({ ...body, option: '__any__' }, [{ id: '__any__' }]);
+  const code = crypto.randomBytes(9).toString('base64url');
+  const link = {
+    code,
+    amount: v.amount,
+    currency: v.currency,
+    order_id: v.orderId || `ORD-${Date.now().toString(36).toUpperCase()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`,
+    description: v.description,
+    status: 'open',
+    created_at: new Date().toISOString(),
+    payments: [],
+  };
+  links.set(code, link);
+  saveLinks();
+  return link;
+}
+
+// The newest attempt on a link that can still be paid (or is mid-confirmation).
+function activePayment(link) {
+  for (let i = link.payments.length - 1; i >= 0; i--) {
+    const p = payments.get(link.payments[i]);
+    if (!p) continue;
+    const v = publicView(p);
+    if (v.address || ['paying', 'underpaid'].includes(v.status)) return p;
+  }
+  return null;
+}
+
+function linkPublicView(link) {
+  const active = link.status === 'open' ? activePayment(link) : null;
+  return {
+    code: link.code,
+    amount: link.amount,
+    currency: link.currency,
+    order_id: link.order_id,
+    description: link.description,
+    status: link.status,
+    payment: active ? publicView(active) : null,
+  };
+}
+
+function linkAdminView(link) {
+  const last = link.payments.length ? payments.get(link.payments[link.payments.length - 1]) : null;
+  return {
+    ...linkPublicView(link),
+    created_at: link.created_at,
+    paid_at: link.paid_at || null,
+    attempts: link.payments.length,
+    last_attempt: last ? { status: publicView(last).status, pay_amount: last.pay_amount, pay_currency: last.pay_currency, network: last.network_label } : null,
+    url: `${cfg.publicUrl || `http://localhost:${cfg.port}`}/p/${link.code}`,
+  };
+}
+
+async function payLink(link, body) {
+  if (link.status !== 'open') throw new Gone(link.status === 'paid' ? 'This payment has already been made.' : 'This payment link is no longer active.');
+  const active = activePayment(link);
+  if (active) {
+    // Never hand out a second address while one is mid-payment.
+    if (['paying', 'underpaid'].includes(active.status) || active.option_id === body.option) return active;
+  }
+  const p = await createPayment(body, link);
+  link.payments.push(p.track_id);
+  saveLinks();
+  return p;
+}
+
+// ─── Admin session (signed cookie) ───────────────────────────────────────────
+
+const SESSION_SECRET = crypto.randomBytes(32);
+const SESSION_HOURS = 12;
+
+function signSession(exp) {
+  return `${exp}.${crypto.createHmac('sha256', SESSION_SECRET).update(String(exp)).digest('base64url')}`;
+}
+function isAdmin(req) {
+  if (!cfg.adminPassword) return false;
+  const m = String(req.headers.cookie || '').match(/(?:^|;\s*)adm=([^;]+)/);
+  if (!m) return false;
+  const [exp] = m[1].split('.');
+  if (!(Number(exp) > Date.now())) return false;
+  const expected = signSession(exp);
+  return m[1].length === expected.length && crypto.timingSafeEqual(Buffer.from(m[1]), Buffer.from(expected));
+}
+function sessionCookie(value, maxAge) {
+  const secure = cfg.publicUrl.startsWith('https://') ? '; Secure' : '';
+  return `adm=${value}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${maxAge}${secure}`;
+}
+function passwordMatches(given) {
+  const a = crypto.createHash('sha256').update(String(given || '')).digest();
+  const b = crypto.createHash('sha256').update(cfg.adminPassword).digest();
+  return crypto.timingSafeEqual(a, b);
+}
+
 const FINAL = new Set(['paid', 'manual_accept', 'expired', 'refunded']);
 const PAID = new Set(['paid', 'manual_accept']);
 
@@ -181,6 +300,13 @@ function setStatus(p, status, source) {
 
 // Fulfilment hook — this is where you mark the order as paid in your own system.
 function onPaid(p) {
+  const link = p.link_code && links.get(p.link_code);
+  if (link && link.status !== 'paid') {
+    link.status = 'paid';
+    link.paid_track_id = p.track_id;
+    link.paid_at = new Date().toISOString();
+    saveLinks();
+  }
   console.log(`[paid] order=${p.order_id} ${p.amount} ${p.currency} = ${p.pay_amount} ${p.pay_currency} (${p.track_id})`);
 }
 
@@ -228,6 +354,7 @@ async function refreshStatus(p) {
 // ─── Create payment ──────────────────────────────────────────────────────────
 
 class BadRequest extends Error {}
+class Gone extends Error {}
 
 function validateCreate(body, options) {
   const amount = Number(body.amount);
@@ -252,9 +379,12 @@ function validateCreate(body, options) {
   return { amount, currency, option, email, orderId, description };
 }
 
-async function createPayment(body) {
+async function createPayment(body, link = null) {
   const options = await getOptions();
-  const v = validateCreate(body, options);
+  // A fixed-amount link supplies amount/currency/reference itself; the payer only picks the coin.
+  const v = validateCreate(link
+    ? { amount: link.amount, currency: link.currency, order_id: link.order_id, description: link.description, option: body.option }
+    : body, options);
   const orderId = v.orderId || `ORD-${Date.now().toString(36).toUpperCase()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
 
   const request = {
@@ -263,8 +393,8 @@ async function createPayment(body) {
     pay_currency: v.option.coin,
     network: v.option.network,
     lifetime: cfg.lifetime,
-    order_id: orderId,
-    ...(v.email && { email: v.email }),
+    // Each attempt on a link gets its own gateway reference; the payer still sees the link's.
+    order_id: link ? `${orderId}-${link.payments.length + 1}` : orderId,
     ...(v.description && { description: v.description }),
     ...(cfg.publicUrl && { callback_url: `${cfg.publicUrl}/webhooks/payment` }),
     ...(cfg.feePaidByPayer !== undefined && { fee_paid_by_payer: cfg.feePaidByPayer }),
@@ -275,7 +405,7 @@ async function createPayment(body) {
 
   const p = {
     track_id: String(d.track_id),
-    order_id: d.order_id || orderId,
+    order_id: orderId,
     description: v.description,
     email: v.email,
     amount: Number(d.amount ?? v.amount),
@@ -284,6 +414,8 @@ async function createPayment(body) {
     pay_currency: String(d.pay_currency || v.option.coin).toUpperCase(),
     network: v.option.network,
     network_label: v.option.label,
+    option_id: v.option.id,
+    link_code: link?.code || null,
     address: String(d.address),
     memo: d.memo ? String(d.memo) : '',
     rate: d.rate ?? null,
@@ -350,6 +482,8 @@ const STATIC = {
   '/app.js': ['app.js', 'text/javascript; charset=utf-8'],
   '/style.css': ['style.css', 'text/css; charset=utf-8'],
   '/favicon.svg': ['favicon.svg', 'image/svg+xml'],
+  '/admin': ['admin.html', 'text/html; charset=utf-8'],
+  '/admin.js': ['admin.js', 'text/javascript; charset=utf-8'],
 };
 
 const SECURITY_HEADERS = {
@@ -399,7 +533,71 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && STATIC[url.pathname]) {
       const [file, type] = STATIC[url.pathname];
       return send(res, 200, fs.readFileSync(path.join(ROOT, 'public', file)), type,
-        url.pathname === '/' ? {} : { 'Cache-Control': 'public, max-age=300' });
+        file.endsWith('.html') ? {} : { 'Cache-Control': 'public, max-age=300' });
+    }
+
+    // Customer-facing fixed-amount link: same checkout page, locked amount.
+    if (req.method === 'GET' && /^\/p\/[A-Za-z0-9_-]{6,32}$/.test(url.pathname)) {
+      return send(res, 200, fs.readFileSync(path.join(ROOT, 'public', 'index.html')), 'text/html; charset=utf-8');
+    }
+
+    const lm = url.pathname.match(/^\/api\/links\/([A-Za-z0-9_-]{6,32})(\/pay)?$/);
+    if (lm) {
+      const link = links.get(lm[1]);
+      if (!link) return fail(res, 404, 'This payment link does not exist.');
+      if (req.method === 'GET' && !lm[2]) {
+        const active = link.status === 'open' && activePayment(link);
+        if (active) await refreshStatus(active);
+        return ok(res, linkPublicView(link));
+      }
+      if (req.method === 'POST' && lm[2]) {
+        if (rateLimited(clientIp(req))) return fail(res, 429, 'Too many payment attempts. Please wait a few minutes.');
+        let body;
+        try { body = JSON.parse((await readBody(req)).toString('utf8') || '{}'); } catch { throw new BadRequest('Invalid request.'); }
+        return ok(res, publicView(await payLink(link, body)));
+      }
+    }
+
+    // ── Admin ──
+    if (route === 'POST /api/admin/login') {
+      if (!cfg.adminPassword) return fail(res, 404, 'Not found.');
+      if (rateLimited(`login:${clientIp(req)}`, 10)) return fail(res, 429, 'Too many attempts. Please wait a few minutes.');
+      let body;
+      try { body = JSON.parse((await readBody(req)).toString('utf8') || '{}'); } catch { throw new BadRequest('Invalid request.'); }
+      if (!passwordMatches(body.password)) return fail(res, 401, 'Wrong password.');
+      const exp = Date.now() + SESSION_HOURS * 3600 * 1000;
+      return send(res, 200, { success: true, data: {} }, undefined, { 'Set-Cookie': sessionCookie(signSession(exp), SESSION_HOURS * 3600) });
+    }
+    if (route === 'POST /api/admin/logout') {
+      return send(res, 200, { success: true, data: {} }, undefined, { 'Set-Cookie': sessionCookie('', 0) });
+    }
+    if (url.pathname.startsWith('/api/admin/')) {
+      if (!isAdmin(req)) return fail(res, 401, 'Please sign in.');
+      if (route === 'GET /api/admin/links') {
+        const all = [...links.values()].sort((a, b) => b.created_at.localeCompare(a.created_at));
+        for (const l of all) {
+          const a = l.status === 'open' && activePayment(l);
+          if (a) await refreshStatus(a);
+        }
+        return ok(res, all.map(linkAdminView));
+      }
+      if (route === 'POST /api/admin/links') {
+        let body;
+        try { body = JSON.parse((await readBody(req)).toString('utf8') || '{}'); } catch { throw new BadRequest('Invalid request.'); }
+        return ok(res, linkAdminView(createLink(body)));
+      }
+      const cm = url.pathname.match(/^\/api\/admin\/links\/([A-Za-z0-9_-]{6,32})\/cancel$/);
+      if (req.method === 'POST' && cm) {
+        const link = links.get(cm[1]);
+        if (!link) return fail(res, 404, 'Link not found.');
+        if (link.status === 'paid') throw new BadRequest('A paid link cannot be cancelled.');
+        const a = activePayment(link);
+        if (a && ['paying', 'underpaid'].includes(a.status)) throw new BadRequest('A payment is in progress on this link.');
+        link.status = 'cancelled';
+        saveLinks();
+        return ok(res, linkAdminView(link));
+      }
+      return fail(res, 404, 'Not found.');
     }
 
     if (route === 'GET /api/config') {
@@ -459,6 +657,7 @@ const server = http.createServer(async (req, res) => {
     return fail(res, 404, 'Not found.');
   } catch (err) {
     if (err instanceof BadRequest) return fail(res, 400, err.message);
+    if (err instanceof Gone) return fail(res, 410, err.message);
     // Gateway details stay in the server log; the payer gets a neutral message.
     console.error(`[error] ${route}: ${err.message}`);
     return fail(res, 502, 'Payment service is temporarily unavailable. Please try again.');

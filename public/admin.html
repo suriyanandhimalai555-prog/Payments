@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Payment links</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/style.css">
+  <script src="/admin.js" defer></script>
+</head>
+<body>
+  <main class="shell wide">
+    <header class="brand">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span class="brand-name" id="brandName">&nbsp;</span>
+      <span class="secure" id="who">Payment links</span>
+      <button class="copy" type="button" id="logoutBtn" hidden>Sign out</button>
+    </header>
+
+    <div class="banner" id="mockBanner" hidden>Test mode — no real payment will be made.</div>
+
+    <section class="card" id="loginView" hidden>
+      <h1>Sign in</h1>
+      <form id="loginForm">
+        <label class="field">
+          <span>Admin password</span>
+          <input id="password" type="password" autocomplete="current-password" required>
+        </label>
+        <p class="error" id="loginError" role="alert" hidden></p>
+        <button class="btn primary" type="submit">Sign in</button>
+      </form>
+    </section>
+
+    <div id="appView" hidden>
+      <section class="card">
+        <h1>New payment link</h1>
+        <form id="linkForm" novalidate>
+          <label class="field">
+            <span>Amount</span>
+            <div class="amount-row">
+              <input id="amount" type="text" inputmode="decimal" autocomplete="off" placeholder="0.00" required>
+              <select id="currency" aria-label="Currency"></select>
+            </div>
+          </label>
+          <label class="field">
+            <span>Reference <em>(optional — generated if empty)</em></span>
+            <input id="order_id" type="text" maxlength="64" autocomplete="off" placeholder="INV-22">
+          </label>
+          <label class="field">
+            <span>What it's for <em>(shown to the customer)</em></span>
+            <input id="description" type="text" maxlength="200" autocomplete="off" placeholder="Gold scheme — November">
+          </label>
+          <p class="error" id="linkError" role="alert" hidden></p>
+          <button class="btn primary" type="submit" id="createBtn">Create link</button>
+        </form>
+
+        <div class="created" id="created" hidden>
+          <div class="label">Link ready — send it to the customer</div>
+          <div class="mono-row">
+            <code id="createdUrl"></code>
+            <button class="copy" type="button" id="copyCreated">Copy</button>
+          </div>
+          <p class="muted small">The address and QR are made only when the customer opens it, so the link doesn't expire.</p>
+        </div>
+      </section>
+
+      <section class="card list-card">
+        <div class="list-head">
+          <h2>Links</h2>
+          <button class="copy" type="button" id="refreshBtn">Refresh</button>
+        </div>
+        <div id="links"></div>
+      </section>
+    </div>
+  </main>
+</body>
+</html>
